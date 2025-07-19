@@ -8,7 +8,7 @@ Route::get('dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::get('/', [PhotoController::class, 'index']);
+Route::get('/', [PhotoController::class, 'index'])->name('home');
 Route::get('/photo-session', fn () => Inertia::render('PhotoSession'));
 Route::get('/photos/recent', [PhotoController::class, 'recent']);
 Route::post('/photos/store', [PhotoController::class, 'store']);
