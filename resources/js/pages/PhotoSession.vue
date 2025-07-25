@@ -1,206 +1,235 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import axios from 'axios'
+import { router } from '@inertiajs/vue3'
 
-const video = ref<HTMLVideoElement | null>(null)
-const stream = ref<MediaStream | null>(null)
-const countdown = ref(0)
-const photo = ref<string | null>(null)
-const isCaptured = ref(false)
+interface Slot {
+  x: number
+  y: number
+  width: number
+  height: number
+}
 
+const props = defineProps<{
+  template: any
+  photo_path: string
+}>()
+
+// Layout & State
+const layout = ref([])
+const videoRef = ref<HTMLVideoElement | null>(null)
+const canvasRef = ref<HTMLCanvasElement | null>(null)
+
+const totalPhotos = ref(0)
+const previews = ref<string[]>([])
+const currentIndex = ref(0)
+const selectedPreviewIndex = ref<number | null>(null)
+
+const countdown = ref(3)
+const sessionStarted = ref(false)
+const isCapturing = ref(false)
+const isRetaking = ref(false)
+
+const allCaptured = computed(() => previews.value.every(Boolean))
+
+// Parse layout
+const parseLayout = () => {
+  try {
+    layout.value = JSON.parse(props.template?.layout_json || '[]')
+    totalPhotos.value = layout.value.length
+    previews.value = Array(totalPhotos.value).fill(null)
+  } catch (err) {
+    console.warn('Invalid layout_json:', err)
+  }
+}
+
+// Camera
+// const startCamera = async () => {
+//   const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+//   if (videoRef.value) videoRef.value.srcObject = stream
+// }
 const startCamera = async () => {
-    if (!stream.value) {
-        stream.value = await navigator.mediaDevices.getUserMedia({ video: true })
-        if (video.value) video.value.srcObject = stream.value
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+    if (videoRef.value) videoRef.value.srcObject = stream
+  } catch (err) {
+    alert('Gagal mengakses kamera. Pastikan izin kamera sudah diberikan.')
+    console.error(err)
+  }
+}
+const stopCamera = () => {
+  const stream = videoRef.value?.srcObject as MediaStream
+  stream?.getTracks().forEach(track => track.stop())
+}
+
+// Countdown logic
+const runCountdown = () => new Promise<void>((resolve) => {
+  countdown.value = 3
+  const interval = setInterval(() => {
+    countdown.value--
+    if (countdown.value === 0) {
+      clearInterval(interval)
+      resolve()
     }
+  }, 1000)
+})
+
+// Capture logic
+const capturePhoto = (index: number) => {
+  const canvas = canvasRef.value
+  const ctx = canvas?.getContext('2d')
+  if (!canvas || !ctx || !videoRef.value) return
+
+  ctx.drawImage(videoRef.value, 0, 0, canvas.width, canvas.height)
+  // previews.value[index] = canvas.toDataURL('image/png')
+  previews.value[index] = canvas.toDataURL('image/jpeg', 0.9)
 }
 
-const startSession = async () => {
-    await startCamera()
-    photo.value = null
-    isCaptured.value = false
-    takePhotoWithCountdown()
+// Main photo session
+const startPhotoSession = async () => {
+  if (isCapturing.value || currentIndex.value >= totalPhotos.value) return
+
+  sessionStarted.value = true
+  isCapturing.value = true
+  await startCamera()
+
+  for (let i = currentIndex.value; i < totalPhotos.value; i++) {
+    await runCountdown()
+    capturePhoto(i)
+    currentIndex.value++
+    await new Promise(r => setTimeout(r, 500))
+  }
+
+  isCapturing.value = false
+  stopCamera()
 }
 
-const takePhotoWithCountdown = () => {
-    countdown.value = 5
-    const timer = setInterval(() => {
-        countdown.value--
-        if (countdown.value === 0) {
-            clearInterval(timer)
-            capturePhoto()
-        }
-    }, 1000)
+// Retake logic
+const retakePhoto = async (index: number) => {
+  selectedPreviewIndex.value = null
+  isRetaking.value = true
+
+  await startCamera()
+  await runCountdown()
+  capturePhoto(index)
+
+  isRetaking.value = false
+  selectedPreviewIndex.value = null
 }
 
-const capturePhoto = () => {
-    const videoEl = video.value
-    if (!videoEl) return
+// Finish session
+const finish = async () => {
+  if (previews.value.some(p => !p)) {
+    alert('Pastikan semua foto telah diambil.')
+    return
+  }
 
-    const canvas = document.createElement('canvas')
-    canvas.width = videoEl.videoWidth
-    canvas.height = videoEl.videoHeight
-    const ctx = canvas.getContext('2d')
-    if (ctx) ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height)
-
-    photo.value = canvas.toDataURL('image/jpeg')
-    isCaptured.value = true
-}
-
-const retakePhoto = () => {
-    photo.value = null
-    isCaptured.value = false
-    takePhotoWithCountdown()
-}
-
-const uploadPhoto = async () => {
-    if (!photo.value) return
-
-    const blob = dataURItoBlob(photo.value)
-    const formData = new FormData()
-    formData.append('photo', blob, 'photo.jpg')
-
-    await fetch('/api/photos/store', {
-        method: 'POST',
-        body: formData
+  try {
+    const response = await axios.post('/session/finish', {
+      template_id: props.template.id,
+      photos: previews.value,
     })
 
-    alert('Photo uploaded!')
+    const sessionCode = response.data.session_code
+    router.visit(`/preview/${sessionCode}`)
+  } catch (error) {
+    console.error(error)
+    alert('Gagal menyelesaikan sesi.')
+  }
 }
 
-// helper
-function dataURItoBlob(dataURI: string) {
-    const byteString = atob(dataURI.split(',')[1])
-    const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0]
-    const ab = new ArrayBuffer(byteString.length)
-    const ia = new Uint8Array(ab)
-    for (let i = 0; i < byteString.length; i++) {
-        ia[i] = byteString.charCodeAt(i)
-    }
-    return new Blob([ab], { type: mimeString })
-}
+// const finish = () => {
+//   router.post('/session/finish', {
+//     template_id: props.template.id,
+//     photos: previews.value,
+//   }, {
+//     onSuccess: (page) => {
+//       router.visit(`/preview/${page.props.session_id}`)
+//     },
+//   })
+// }
+
+// Init
+onMounted(() => {
+  if (!props.template || !props.template.layout_json) {
+    alert('Invalid template or layout.')
+    router.visit('/select-template')
+    return
+  }
+  parseLayout()
+  startCamera()
+})
+
+// Stop camera once complete
+watch(allCaptured, (val) => {
+  if (val && !isRetaking.value) stopCamera()
+})
 </script>
 
 <template>
-    <div class="w-full h-screen bg-black flex flex-col items-center justify-center relative">
-        <video ref="video" autoplay playsinline class="w-full h-full object-cover absolute top-0 left-0" />
+  <div class="relative w-screen h-screen bg-black text-white">
+    <!-- Live Camera -->
+    <video
+      ref="videoRef"
+      autoplay
+      playsinline
+      class="absolute inset-0 w-full h-full object-cover z-0"
+      v-show="!selectedPreviewIndex"
+    ></video>
+    <canvas ref="canvasRef" width="1280" height="720" class="hidden"></canvas>
 
-        <!-- Countdown -->
-        <div v-if="countdown > 0" class="absolute text-white text-6xl font-bold z-10">
-            {{ countdown }}
-        </div>
-
-        <!-- Buttons -->
-        <div v-if="!isCaptured" class="absolute bottom-8 z-10 flex gap-4">
-            <button @click="startSession" class="bg-white text-black px-6 py-3 rounded-full font-bold">Start</button>
-        </div>
-
-        <!-- Preview & Actions -->
-        <div v-if="photo" class="absolute bottom-0 w-full bg-black bg-opacity-50 p-4 flex flex-col items-center gap-2 z-10">
-            <img :src="photo" class="w-48 h-auto object-contain rounded border-2 border-white" />
-            <div class="flex gap-4">
-                <button @click="retakePhoto" class="bg-yellow-400 text-black px-4 py-2 rounded-full">Retake</button>
-                <button @click="uploadPhoto" class="bg-green-500 text-white px-4 py-2 rounded-full">Save</button>
-            </div>
-        </div>
+    <!-- Countdown -->
+    <div v-if="(isCapturing || isRetaking) && countdown > 0" class="absolute inset-0 flex items-center justify-center z-10">
+      <div class="text-9xl font-bold text-red-600 drop-shadow-lg">{{ countdown }}</div>
     </div>
+
+    <!-- Start Button -->
+    <div v-if="!sessionStarted && !allCaptured" class="absolute inset-0 flex items-center justify-center z-10">
+      <button
+        @click="startPhotoSession"
+        :disabled="isCapturing || allCaptured"
+        class="bg-blue-600 hover:bg-blue-700 px-10 py-5 rounded-lg text-3xl font-semibold"
+      >
+        {{ totalPhotos === 1 ? 'Take Photo' : 'Start Session' }}
+      </button>
+    </div>
+
+    <!-- Fullscreen Preview (Retake) -->
+    <div
+      v-if="selectedPreviewIndex !== null"
+      class="absolute inset-0 bg-black flex items-center justify-center z-20"
+    >
+      <img :src="previews[selectedPreviewIndex]" class="max-w-full max-h-full object-contain rounded" />
+      <button
+        @click="retakePhoto(selectedPreviewIndex)"
+        class="absolute top-4 right-4 bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded-lg text-sm font-bold"
+      >
+        Retake
+      </button>
+    </div>
+
+    <!-- Preview Thumbnails -->
+    <div class="absolute bottom-0 left-0 right-0 bg-black/70 px-4 py-3 flex flex-wrap gap-3 justify-center z-30">
+      <div
+        v-for="(preview, index) in previews"
+        :key="index"
+        class="relative w-24 h-24 border-2 border-white overflow-hidden rounded cursor-pointer"
+        @click="selectedPreviewIndex = index"
+      >
+        <img v-if="preview" :src="preview" class="object-cover w-full h-full" />
+        <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-sm">Empty</div>
+      </div>
+    </div>
+
+    <!-- Finish Button -->
+    <div v-if="allCaptured" class="absolute bottom-0 right-0 m-6 z-40">
+      <button
+        @click="finish"
+        class="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg text-lg font-semibold"
+      >
+        Print & Finish
+      </button>
+    </div>
+  </div>
 </template>
 
-<!-- 4 Photo Capture -->
-<!-- <script setup lang="ts">
-    import { ref } from 'vue'
-
-    const video = ref<HTMLVideoElement | null>(null)
-    const stream = ref<MediaStream | null>(null)
-    const countdown = ref(0)
-    const photoIndex = ref(0)
-    const previews = ref<string[]>([])
-
-    const startCamera = async () => {
-        if (!stream.value) {
-            stream.value = await navigator.mediaDevices.getUserMedia({ video: true })
-            if (video.value) video.value.srcObject = stream.value
-        }
-    }
-
-    const startSession = async () => {
-        photoIndex.value = 0
-        previews.value = []
-        await startCamera()
-        takePhotoWithCountdown()
-    }
-
-    const takePhotoWithCountdown = () => {
-        countdown.value = 3
-        const timer = setInterval(() => {
-            countdown.value--
-            if (countdown.value === 0) {
-                clearInterval(timer)
-                capturePhoto()
-            }
-        }, 1000)
-    }
-
-    const capturePhoto = () => {
-    const canvas = document.createElement('canvas')
-    const videoEl = video.value
-    if (!videoEl) return
-
-    canvas.width = videoEl.videoWidth
-    canvas.height = videoEl.videoHeight
-    const ctx = canvas.getContext('2d')
-    if (ctx) ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height)
-
-    const imageData = canvas.toDataURL('image/jpeg')
-    previews.value.push(imageData)
-
-    photoIndex.value++
-        if (photoIndex.value < 4) {
-            setTimeout(() => takePhotoWithCountdown(), 1000)
-        } else {
-            uploadPhotos()
-        }
-    }
-
-    const uploadPhotos = async () => {
-        const formData = new FormData()
-        previews.value.forEach((photo, i) => {
-            const blob = dataURItoBlob(photo)
-            formData.append('photos[]', blob, `photo-${i}.jpg`)
-        })
-
-        await fetch('/api/photos/store', {
-            method: 'POST',
-            body: formData
-        })
-    }
-
-    // helper
-    function dataURItoBlob(dataURI: string) {
-        const byteString = atob(dataURI.split(',')[1])
-        const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0]
-        const ab = new ArrayBuffer(byteString.length)
-        const ia = new Uint8Array(ab)
-        for (let i = 0; i < byteString.length; i++) {
-            ia[i] = byteString.charCodeAt(i)
-        }
-        return new Blob([ab], { type: mimeString })
-    }
-</script>
-
-<template>
-    <div class="w-full h-screen bg-black flex flex-col items-center justify-center relative">
-        <video ref="video" autoplay playsinline class="w-full h-full object-cover absolute top-0 left-0"></video>
-
-        <div v-if="countdown > 0" class="absolute text-white text-6xl font-bold z-10">
-            {{ countdown }}
-        </div>
-
-        <div class="absolute bottom-8 z-10 flex gap-4">
-            <button @click="startSession" class="bg-white text-black px-6 py-3 rounded-full font-bold">Start</button>
-        </div>
-
-        <div class="absolute bottom-0 w-full bg-black bg-opacity-50 p-4 flex justify-center gap-4">
-            <img v-for="(photo, index) in previews" :key="index" :src="photo" class="w-24 h-24 object-cover rounded border-2 border-white" />
-        </div>
-    </div>
-</template> -->

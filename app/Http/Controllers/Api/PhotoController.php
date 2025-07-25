@@ -5,8 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use App\Models\Photo;
 use Inertia\Inertia;
+use App\Models\Photo;
+use App\Models\Template;
 
 class PhotoController extends Controller
 {
@@ -29,6 +30,29 @@ class PhotoController extends Controller
     }
 
     /**
+     * Render the template with the selected photo.
+     */
+    public function renderTemplate(Request $request)
+    {
+        $request->validate([
+            'template_id' => 'required|exists:templates,id',
+            'photo_path' => 'required|string',
+        ]);
+
+        $template = Template::findOrFail($request->input('template_id'));
+
+        return Inertia::render('PhotoSession', [
+            'template' => [
+                'id' => $template->id,
+                'name' => $template->name,
+                'file_path' => asset('templates/' . $template->file_path),
+                'layout_json' => $template->layout_json,
+            ],
+            'photo_path' => $request->input('photo_path'),
+        ]);
+    }
+
+    /**
      * Show the form for creating a new resource.
      */
     public function create()
@@ -41,13 +65,21 @@ class PhotoController extends Controller
      */
     public function store(Request $request)
     {
-        $photos = $request->file('photos');
+        $request->validate([
+            'photo' => 'required|image|max:5120',
+        ]);
 
-        foreach ($photos as $photo) {
-            $photo->storeAs('photos', uniqid() . '.jpg', 'public');
-        }
+        $photoPath = $request->file('photo')->store('photos', 'public');
 
-        return response()->json(['status' => 'ok']);
+        $photo = Photo::create([
+            'file_path' => $photoPath,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'photo_id' => $photo->id,
+            'file_path' => asset('storage/' . $photoPath),
+        ]);
     }
 
     /**

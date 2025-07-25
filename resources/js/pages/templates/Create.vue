@@ -25,7 +25,7 @@ const handleImageChange = (e: Event) => {
 
 const submit = () => {
     form.post(route('templates.store'), {
-        forceFormData: true, // penting untuk kirim file
+        forceFormData: true,
     });
 };
 

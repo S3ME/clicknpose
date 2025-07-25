@@ -17,31 +17,53 @@ const props = defineProps<{
     };
 }>();
 
+// Inertia form setup
 const form = useForm({
     name: props.template.name,
     image: null as File | null,
 });
 
-const imagePreview = ref<string | null>(props.template.image_path ? `/storage/${props.template.image_path}` : null);
+// Image preview state
+const imagePreview = ref<string | null>(
+    props.template.image_path ? `/storage/${props.template.image_path}` : null
+);
 
+// Handle file change
 const handleImageChange = (e: Event) => {
     const file = (e.target as HTMLInputElement).files?.[0];
-    if (file) {
-        form.image = file;
-        imagePreview.value = URL.createObjectURL(file);
+    if (!file) return;
+
+    if (file.type !== 'image/png') {
+        alert('Hanya file PNG yang diperbolehkan.');
+        (e.target as HTMLInputElement).value = '';
+        return;
     }
+
+    form.image = file;
+    imagePreview.value = URL.createObjectURL(file);
 };
 
+// Form submission
 const submit = () => {
-    form.post(route('templates.update', props.template.id), {
-        forceFormData: true,
+    // form.transform(() => ({
+    //     name: form.name,
+    //     image: form.image,
+    // })).put(route('templates.update', props.template.id), {
+    //     forceFormData: form.image !== null,
+    //     preserveScroll: true,
+    // });
+    form.transform(data => ({
+        ...data,
+        _method: 'put',
+        templateId: props.template.id,
+    }))
+        .post(route('templates.update', props.template.id), {
         preserveScroll: true,
-        onSuccess: () => {
-            // optional: redirect or flash message
-        },
-    });
+        forceFormData: form.image !== null,
+    })
 };
 
+// Breadcrumbs
 const breadcrumbs = [
     { title: 'Templates', href: route('templates.index') },
     { title: 'Edit Template', href: route('templates.edit', props.template.id) },
@@ -51,10 +73,11 @@ const breadcrumbs = [
 <template>
     <Head title="Edit Template" />
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+        <div class="flex flex-col gap-6 p-4 rounded-xl">
             <HeadingSmall title="Edit Template" description="Update existing photobooth template" />
 
             <form @submit.prevent="submit" class="space-y-6">
+                <!-- Nama Template -->
                 <div class="grid gap-2">
                     <Label for="name">Template Name</Label>
                     <Input
@@ -68,12 +91,13 @@ const breadcrumbs = [
                     <InputError :message="form.errors.name" />
                 </div>
 
+                <!-- Gambar Template -->
                 <div class="grid gap-2">
-                    <Label for="image">Template Image</Label>
+                    <Label for="image">Template Image (PNG only)</Label>
                     <Input
                         id="image"
                         type="file"
-                        accept="image/*"
+                        accept="image/png"
                         @change="handleImageChange"
                     />
                     <InputError :message="form.errors.image" />
@@ -83,17 +107,15 @@ const breadcrumbs = [
                     </div>
                 </div>
 
+                <!-- Tombol Aksi -->
                 <div class="flex items-center gap-4">
-                    <!-- Button Update -->
                     <Button :disabled="form.processing" class="px-5 py-2 text-sm rounded-md shadow hover:shadow-md transition">
                         Update
                     </Button>
 
-                    <!-- Button Cancel -->
-                    <Link
-                        :href="route('templates.index')"
-                    >
+                    <Link :href="route('templates.index')">
                         <button
+                            type="button"
                             class="flex items-center px-5 py-2 text-sm font-medium bg-red-500 hover:bg-red-700 border border-red-600 text-white rounded-md hover:text-black transition-all shadow-sm">
                             Cancel
                         </button>
