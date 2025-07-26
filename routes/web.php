@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\Api\PhotoController;
+use App\Http\Controllers\Api\StreamController;
 use App\Http\Controllers\PhotoSessionController;
 use App\Models\Template;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
@@ -62,6 +63,8 @@ Route::get('/download/{filename}', function ($filename) {
 
     return response()->download($path);
 })->name('download.image');
+
+Route::get('/stream/preview', [StreamController::class, 'preview']);
 
 // Additional config files
 require __DIR__.'/settings.php';
