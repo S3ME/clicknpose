@@ -1,4 +1,4 @@
-<!-- <script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { router } from '@inertiajs/vue3'
@@ -149,27 +149,27 @@ onMounted(() => {
 watch(allCaptured, (val) => {
   if (val && !isRetaking.value) stopCamera()
 })
-</script> -->
+</script>
 
-<!-- <template>
-  <div class="relative w-screen h-screen bg-black text-white"> -->
+<template>
+  <div class="relative w-screen h-screen bg-black text-white">
     <!-- Live Camera -->
-    <!-- <video
+    <video
       ref="videoRef"
       autoplay
       playsinline
       class="absolute inset-0 w-full h-full object-cover z-0"
       v-show="!selectedPreviewIndex"
     ></video>
-    <canvas ref="canvasRef" width="1280" height="720" class="hidden"></canvas> -->
+    <canvas ref="canvasRef" width="1280" height="720" class="hidden"></canvas>
 
     <!-- Countdown -->
-    <!-- <div v-if="(isCapturing || isRetaking) && countdown > 0" class="absolute inset-0 flex items-center justify-center z-10">
+    <div v-if="(isCapturing || isRetaking) && countdown > 0" class="absolute inset-0 flex items-center justify-center z-10">
       <div class="text-9xl font-bold text-red-600 drop-shadow-lg">{{ countdown }}</div>
-    </div> -->
+    </div>
 
     <!-- Start Button -->
-    <!-- <div v-if="!sessionStarted && !allCaptured" class="absolute inset-0 flex items-center justify-center z-10">
+    <div v-if="!sessionStarted && !allCaptured" class="absolute inset-0 flex items-center justify-center z-10">
       <button
         @click="startPhotoSession"
         :disabled="isCapturing || allCaptured"
@@ -177,10 +177,10 @@ watch(allCaptured, (val) => {
       >
         {{ totalPhotos === 1 ? 'Take Photo' : 'Start Session' }}
       </button>
-    </div> -->
+    </div>
 
     <!-- Fullscreen Preview (Retake) -->
-    <!-- <div
+    <div
       v-if="selectedPreviewIndex !== null"
       class="absolute inset-0 bg-black flex items-center justify-center z-20"
     >
@@ -191,10 +191,10 @@ watch(allCaptured, (val) => {
       >
         Retake
       </button>
-    </div> -->
+    </div>
 
     <!-- Preview Thumbnails -->
-    <!-- <div class="absolute bottom-0 left-0 right-0 bg-black/70 px-4 py-3 flex flex-wrap gap-3 justify-center z-30">
+    <div class="absolute bottom-0 left-0 right-0 bg-black/70 px-4 py-3 flex flex-wrap gap-3 justify-center z-30">
       <div
         v-for="(preview, index) in previews"
         :key="index"
@@ -204,10 +204,10 @@ watch(allCaptured, (val) => {
         <img v-if="preview" :src="preview" class="object-cover w-full h-full" />
         <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-sm">Empty</div>
       </div>
-    </div> -->
+    </div>
 
     <!-- Finish Button -->
-    <!-- <div v-if="allCaptured" class="absolute bottom-0 right-0 m-6 z-40">
+    <div v-if="allCaptured" class="absolute bottom-0 right-0 m-6 z-40">
       <button
         @click="finish"
         class="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg text-lg font-semibold"
@@ -216,9 +216,9 @@ watch(allCaptured, (val) => {
       </button>
     </div>
   </div>
-</template> -->
+</template>
 
-<script setup lang="ts">
+<!-- <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { router } from '@inertiajs/vue3'
@@ -404,9 +404,9 @@ onMounted(() => {
 watch(allCaptured, (val) => {
   if (val && !isRetaking.value) stopCamera()
 })
-</script>
+</script> -->
 
-<template>
+<!-- <template>
   <div class="relative w-screen h-screen bg-black text-white">
     <video
       ref="videoRef"
@@ -465,4 +465,4 @@ watch(allCaptured, (val) => {
       </button>
     </div>
   </div>
-</template>
+</template> -->
