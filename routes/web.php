@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\Api\PhotoController;
-use App\Http\Controllers\Api\StreamController;
+use App\Http\Controllers\StreamController;
 use App\Http\Controllers\PhotoSessionController;
 use App\Models\Template;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
@@ -65,6 +65,8 @@ Route::get('/download/{filename}', function ($filename) {
 })->name('download.image');
 
 Route::get('/stream/preview', [StreamController::class, 'preview']);
+Route::post('/ffmpeg/start', [StreamController::class, 'start']);
+Route::post('/ffmpeg/stop', [StreamController::class, 'stop']);
 
 // Additional config files
 require __DIR__.'/settings.php';
