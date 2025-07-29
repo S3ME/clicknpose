@@ -42,18 +42,9 @@ Route::get('/photo-session', [PhotoController::class, 'renderTemplate'])->name('
 
 // Session actions
 Route::post('/session/finish', [PhotoSessionController::class, 'finish'])->name('session.finish');
-// Route::get('/session/preview/{session:session_code}', [PhotoSessionController::class, 'preview'])->name('session.preview');
 Route::get('/session/download/{slug}', [PhotoSessionController::class, 'download'])->name('session.download');
 Route::get('/preview/{session:session_code}', [PhotoSessionController::class, 'preview'])->name('session.preview');
 
-// QR code endpoint
-// Route::get('/api/photobooth/qrcode/{session}', function ($session) {
-//     $url = asset("storage/sessions/$session/result.png");
-//     return response(QrCode::format('png')->size(200)->generate($url))
-//         ->header('Content-Type', 'image/png');
-// })->name('qrcode');
-// Route::get('/api/photobooth/qrcode/{session_code}', [QRCodeController::class, 'generate']);
-// Route::get('/download/{slug}', [DownloadController::class, 'show'])->name('download.photo');
 Route::get('/download/{filename}', function ($filename) {
     $path = storage_path('app/public/images/result/' . $filename);
 
@@ -67,6 +58,10 @@ Route::get('/download/{filename}', function ($filename) {
 Route::get('/stream/preview', [StreamController::class, 'preview']);
 Route::post('/ffmpeg/start', [StreamController::class, 'start']);
 Route::post('/ffmpeg/stop', [StreamController::class, 'stop']);
+
+Route::get('/photographer', function () {
+    return Inertia::render('PhotographerClient');
+});
 
 // Additional config files
 require __DIR__.'/settings.php';
