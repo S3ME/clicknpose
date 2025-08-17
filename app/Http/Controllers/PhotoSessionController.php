@@ -155,8 +155,10 @@ class PhotoSessionController extends Controller
             }
 
             try {
+                // $photo = $this->imageManager->read($photoPaths[$index])
+                //     ->resize($area['width'], $area['height']);
                 $photo = $this->imageManager->read($photoPaths[$index])
-                    ->resize($area['width'], $area['height']);
+                    ->cover($area['width'], $area['height']);
 
                 $canvas->place($photo, 'top-left', $area['x'], $area['y']);
             } catch (\Exception $e) {

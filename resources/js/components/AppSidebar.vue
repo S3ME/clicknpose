@@ -47,17 +47,17 @@ const footerNavItems: NavItem[] = [
 
 <template>
     <Sidebar collapsible="icon" variant="inset">
-        <SidebarHeader>
+        <!-- <SidebarHeader>
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <SidebarMenuButton size="lg" as-child>
+                    <SidebarMenuButton size="lg" as-child> -->
                         <Link :href="route('home')">
                             <AppLogo />
                         </Link>
-                    </SidebarMenuButton>
+                    <!-- </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
-        </SidebarHeader>
+        </SidebarHeader> -->
 
         <SidebarContent>
             <NavMain :items="mainNavItems" />
